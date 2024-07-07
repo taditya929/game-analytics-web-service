@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Analytics Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Game Analytics Dashboard</h1>
+
+        <!-- Form to upload CSV -->
+        <form id="uploadForm" action="/upload_csv" method="post" enctype="multipart/form-data">
+            <label for="csvFile">Upload CSV File:</label>
+            <input type="file" id="csvFile" name="file" accept=".csv">
+            <button type="button" onclick="uploadCsv()">Upload CSV</button>
+        </form>
+
+        <!-- Form to query data -->
+        <form id="queryForm">
+            <h2>Query Data</h2>
+            <label>Filter by Columns:</label><br>
+            <!-- Checkboxes for column selection -->
+            <div id="checkboxContainer">
+                <!-- Checkboxes will be inserted here -->
+            </div>
+            <button type="button" onclick="filterData()">Filter</button>
+        </form>
+
+        <!-- Table to display queried data -->
+        <div id="dataContainer">
+            <h2>Query Results</h2>
+            <table id="dataTable">
+                <thead>
+                    <tr id="tableHeaders">
+                        <!-- Headers will be inserted here -->
+                    </tr>
+                </thead>
+                <tbody id="dataBody">
+                    <!-- Data rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle API requests -->
+    <script>
+        function uploadCsv() {
+            let formData = new FormData();
+            formData.append('file', document.getElementById('csvFile').files[0]);
+
+            fetch('/upload_csv', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                // After successful upload, get headers and create checkboxes
+                getCSVHeaders();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error uploading CSV.');
+            });
+        }
+
+        function getCSVHeaders() {
+            // AJAX request to Flask endpoint to get headers from CSV file
+            fetch('/get_csv_headers')
+            .then(response => response.json())
+            .then(headers => {
+                createCheckboxes(headers);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error fetching headers.');
+            });
+        }
+
+        function filterData() {
+    var selectedColumns = getSelectedColumns();
+
+    fetch('/query_data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ selected_columns: selectedColumns })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'query_results.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error fetching or downloading data.');
+    });
+}
+        function getSelectedColumns() {
+    var checkboxes = document.querySelectorAll('#checkboxContainer input[type="checkbox"]');
+    var selectedColumns = [];
+
+    checkboxes.forEach(function(checkbox) {
+        if (checkbox.checked) {
+            selectedColumns.push(checkbox.name);
+        }
+    });
+
+    return selectedColumns;
+}
+
+        function displayFilteredData(data) {
+            var tableHeaders = document.getElementById('tableHeaders');
+            var dataBody = document.getElementById('dataBody');
+
+            // Clear existing table headers and data rows
+            tableHeaders.innerHTML = '';
+            dataBody.innerHTML = '';
+
+            // Create table headers dynamically
+            var headers = Object.keys(data[0]);
+            headers.forEach(function(header) {
+                var th = document.createElement('th');
+                th.textContent = header;
+                tableHeaders.appendChild(th);
+            });
+
+            // Populate table body with data rows
+            data.forEach(function(record) {
+                var tr = document.createElement('tr');
+                headers.forEach(function(header) {
+                    var td = document.createElement('td');
+                    td.textContent = record[header];
+                    tr.appendChild(td);
+                });
+                dataBody.appendChild(tr);
+            });
+        }
+
+        function getSelectedColumns() {
+            var checkboxes = document.querySelectorAll('#checkboxContainer input[type="checkbox"]');
+            var selectedColumns = [];
+
+            checkboxes.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    selectedColumns.push(checkbox.name);
+                }
+            });
+
+            return selectedColumns.join(',');
+        }
+
+        // Function to dynamically create checkboxes for columns
+        function createCheckboxes(headers) {
+            var checkboxContainer = document.getElementById('checkboxContainer');
+            checkboxContainer.innerHTML = ''; // Clear existing checkboxes
+
+            headers.forEach(function(header) {
+                var label = document.createElement('label');
+                label.textContent = header;
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = header;
+                label.appendChild(checkbox);
+                checkboxContainer.appendChild(label);
+                checkboxContainer.appendChild(document.createElement('br'));
+            });
+        }
+    </script>
+</body>
+</html>
